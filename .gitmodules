@@ -1,0 +1,9 @@
+[submodule "lib/secp256k1-embedded"]
+	path = lib/secp256k1-embedded
+	url = git@github.com:diybitcoinhardware/secp256k1-embedded.git
+[submodule "lib/libwally-embedded"]
+	path = lib/libwally-embedded
+	url = https://github.com/diybitcoinhardware/libwally-embedded.git
+[submodule "lib/OSC"]
+	path = lib/OSC
+	url = https://github.com/rddl-network/OSC.git
