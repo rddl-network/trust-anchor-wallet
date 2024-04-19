@@ -10,7 +10,7 @@ extern "C"{
 }
 
 #include "simpleLibRddl.h"
-#include "seedFuncs.h"
+#include "keyFuncs.h"
 #include "utils.h"
 
 
@@ -22,7 +22,7 @@ extern "C"{
  * @return  Generated '0' or '1' string for failure or success. Sending over OSC as string
 
  */
-void routeSeedSet(OSCMessage &msg, int addressOffset)
+void routeSetSeed(OSCMessage &msg, int addressOffset)
 {
     if (msg.isString(0)){
         int length = msg.getDataLength(0);
@@ -30,7 +30,7 @@ void routeSeedSet(OSCMessage &msg, int addressOffset)
 
     }
 
-    OSCMessage resp_msg("/seedSet");
+    OSCMessage resp_msg("/setSeed");
     resp_msg.add(tempSeed);
 
     sendOSCMessage(resp_msg);
@@ -45,12 +45,12 @@ void routeSeedSet(OSCMessage &msg, int addressOffset)
  * @return The stored base seed. Sending over OSC as string
 .
  */
-void routeSeedGet(OSCMessage &msg, int addressOffset)
+void routeGetSeed(OSCMessage &msg, int addressOffset)
 {
-    OSCMessage resp_msg("/seedGet");
-    // resp_msg.add(tempSeed);
+    OSCMessage resp_msg("/getSeed");
+    resp_msg.add(tempSeed);
 
-    // sendOSCMessage(resp_msg);
+    sendOSCMessage(resp_msg);
     getPlntmntKeys();
 }
 
@@ -93,13 +93,19 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     hexStr = toHex(bytes_out, 64);
     resp_msg.add(hexStr.c_str());
 
-    // ext_key *hdKey;
-    // res = bip32_key_from_seed_alloc(bytes_out, sizeof(bytes_out), BIP32_VER_MAIN_PRIVATE, 0, &hdKey);
-    // String hexStrPrivKey;
-    // hexStrPrivKey = toHex((const uint8_t *)hdKey->priv_key, 33);
-    // resp_msg.add(hexStrPrivKey.c_str());
-
-    
-    //resp_msg.add(mnemonic);
     sendOSCMessage(resp_msg);
+}
+
+
+/**
+ * Get the base seed from the trust anchor's memory
+ *
+ * @return The stored base seed. Sending over OSC as string
+.
+ */
+void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
+{
+    OSCMessage resp_msg("/getPlntmntKeys");
+
+    getPlntmntKeys();
 }

@@ -36,7 +36,7 @@ extern uint8_t sdk_pub_key_planetmint[33+1];
 extern uint8_t sdk_pub_key_liquid[33+1];
 extern uint8_t sdk_machineid_public_key[33+1]; 
 
-extern char sdk_address[64];
+extern char sdk_address[128];
 extern char sdk_ext_pub_key_planetmint[EXT_PUB_KEY_SIZE+1];
 extern char sdk_ext_pub_key_liquid[EXT_PUB_KEY_SIZE+1];
 extern char sdk_machineid_public_key_hex[33*2+1];

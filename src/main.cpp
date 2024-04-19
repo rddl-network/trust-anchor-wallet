@@ -3,11 +3,8 @@
 #include <SLIPEncodedSerial.h>
 #include "OSCTable.h"
 
-
-// HardwareSerial Serial0(0);
 HWCDC SerialESP;
 SLIPEncodedSerial SLIPSerial(SerialESP); // for XIAO ESP32C3
-// SLIPEncodedSerial SLIPSerial(Serial); // for AI Thinker ESP-C3-32S
 
 void setup()
 {
@@ -39,6 +36,5 @@ void loop()
         for(const auto& p : osc_func_table){
             msg.route(p.first, p.second);
         }
-        // msg.route("/IHW/mnemonicToSeed", routeMnemonicToSeed);
     }
 }

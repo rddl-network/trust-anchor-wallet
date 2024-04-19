@@ -18,7 +18,7 @@ uint8_t sdk_pub_key_planetmint[33+1] = {0};
 uint8_t sdk_pub_key_liquid[33+1] = {0};
 uint8_t sdk_machineid_public_key[33+1]={0}; 
 
-char sdk_address[64] = {0};
+char sdk_address[128] = {0};
 char sdk_ext_pub_key_planetmint[EXT_PUB_KEY_SIZE+1] = {0};
 char sdk_ext_pub_key_liquid[EXT_PUB_KEY_SIZE+1] = {0};
 char sdk_machineid_public_key_hex[33*2+1] = {0};
@@ -30,6 +30,11 @@ ext_key *node_planetmint;
 ext_key *node_rddl;
 
 
+uint8_t private_key_machine_id[32] = { 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c,\
+                                       0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c,\
+                                       0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c };
+
+
 void printHexVal(OSCMessage& resp_msg, char* data, int len){
     String hexStrPrivKey;
     hexStrPrivKey = toHex((const uint8_t *)data, len);
@@ -39,20 +44,94 @@ void printHexVal(OSCMessage& resp_msg, char* data, int len){
 }
 
 
-void pubkey2address(const uint8_t *pubkey, size_t key_length, uint8_t *address){
-    unsigned char out[32];
-    struct sha256 sha;
-    memset(&sha, 0, sizeof(struct sha256));
-    sha256(&sha, pubkey, key_length);
-    struct ripemd160 hash160;
-    ripemd160(&hash160, &sha, sizeof(sha));
-    memcpy(address, hash160.u.u8, 20);
+void base32_5to8(const uint8_t *in, uint8_t length, uint8_t *out) {
+  if (length >= 1) {
+    out[0] = (in[0] >> 3);
+    out[1] = (in[0] & 7) << 2;
+  }
+
+  if (length >= 2) {
+    out[1] |= (in[1] >> 6);
+    out[2] = (in[1] >> 1) & 31;
+    out[3] = (in[1] & 1) << 4;
+  }
+
+  if (length >= 3) {
+    out[3] |= (in[2] >> 4);
+    out[4] = (in[2] & 15) << 1;
+  }
+
+  if (length >= 4) {
+    out[4] |= (in[3] >> 7);
+    out[5] = (in[3] >> 2) & 31;
+    out[6] = (in[3] & 3) << 3;
+  }
+
+  if (length >= 5) {
+    out[6] |= (in[4] >> 5);
+    out[7] = (in[4] & 31);
+  }
 }
 
 
-int getAddressString(const uint8_t *address, char *stringbuffer)
-{
-    return 0;
+void base32_encode_unsafe(const uint8_t *in, size_t inlen, uint8_t *out) {
+  uint8_t remainder = inlen % 5;
+  size_t limit = inlen - remainder;
+
+  size_t i, j;
+  for (i = 0, j = 0; i < limit; i += 5, j += 8) {
+    base32_5to8(&in[i], 5, &out[j]);
+  }
+
+  if (remainder) base32_5to8(&in[i], remainder, &out[j]);
+}
+
+
+uint32_t bech32_polymod_step(uint32_t pre) {
+    uint8_t b = pre >> 25;
+    return ((pre & 0x1FFFFFF) << 5) ^
+        (-((b >> 0) & 1) & 0x3b6a57b2UL) ^
+        (-((b >> 1) & 1) & 0x26508e6dUL) ^
+        (-((b >> 2) & 1) & 0x1ea119faUL) ^
+        (-((b >> 3) & 1) & 0x3d4233ddUL) ^
+        (-((b >> 4) & 1) & 0x2a1462b3UL);
+}
+
+static const char* charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+int bech32_encode(char *output, const char *hrp, const uint8_t *data, size_t data_len) {
+    uint32_t chk = 1;
+    size_t i = 0;
+    while (hrp[i] != 0) {
+        int ch = hrp[i];
+        if (ch < 33 || ch > 126) {
+            return 0;
+        }
+
+        if (ch >= 'A' && ch <= 'Z') return 0;
+        chk = bech32_polymod_step(chk) ^ (ch >> 5);
+        ++i;
+    }
+    if (i + 7 + data_len > 90) return 0;
+    chk = bech32_polymod_step(chk);
+    while (*hrp != 0) {
+        chk = bech32_polymod_step(chk) ^ (*hrp & 0x1f);
+        *(output++) = *(hrp++);
+    }
+    *(output++) = '1';
+    for (i = 0; i < data_len; ++i) {
+        if (*data >> 5) return 0;
+        chk = bech32_polymod_step(chk) ^ (*data);
+        *(output++) = charset[*(data++)];
+    }
+    for (i = 0; i < 6; ++i) {
+        chk = bech32_polymod_step(chk);
+    }
+    chk ^= 1;
+    for (i = 0; i < 6; ++i) {
+        *(output++) = charset[(chk >> ((5 - i) * 5)) & 0x1f];
+    }
+    *output = 0;
+    return 1;
 }
 
 
@@ -64,6 +143,19 @@ inline void write_be(uint8_t *data, uint32_t x) {
 }
 
 
+void getAddressString(const uint8_t *address, char *stringbuffer)
+{
+     const char *hrp = "plmnt";
+    size_t data_len = 32;
+    uint8_t paddingbuffer[32] = {0};
+    uint8_t base32_enc[100] = {0};
+    base32_encode_unsafe(address, 20, base32_enc);
+
+    size_t len = strlen((const char*)base32_enc);
+    bech32_encode(stringbuffer, hrp, base32_enc, data_len);
+}
+
+
 void hdnode_serialize_public(const ext_key *node, uint32_t fingerprint,
                             uint32_t version, char use_public, char *str,
                             int strsize){
@@ -71,7 +163,6 @@ void hdnode_serialize_public(const ext_key *node, uint32_t fingerprint,
     memzero(node_data, sizeof(node_data));
     write_be(node_data, version);
     node_data[4] = node->depth;
-    //write_be(node_data + 5, fingerprint);
     memcpy(node_data + 5, (char*)&fingerprint, FINGERPRINT_LEN);
     write_be(node_data + 9, node->child_num);
     memcpy(node_data + 13, node->chain_code, 32);
@@ -89,13 +180,19 @@ void hdnode_serialize_public(const ext_key *node, uint32_t fingerprint,
 }
 
 
-uint8_t private_key_machine_id[32] = { 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c,\
-                                       0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c,\
-                                       0x52, 0x44, 0x44, 0x4c, 0x52, 0x44, 0x44, 0x4c };
+void pubkey2address(const uint8_t *pubkey, size_t key_length, uint8_t *address){
+    unsigned char out[32];
+    struct sha256 sha;
+    memset(&sha, 0, sizeof(struct sha256));
+    sha256(&sha, pubkey, key_length);
+    struct ripemd160 hash160;
+    ripemd160(&hash160, &sha, sizeof(sha));
+    memcpy(address, hash160.u.u8, 20);
+}
 
 
 bool getPlntmntKeys(){
-    OSCMessage resp_msg("/seedGet");
+    OSCMessage resp_msg("/getPlntmntKeys");
 
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     int res = bip32_key_from_seed_alloc((const unsigned char*)tempSeed, 64, BIP32_VER_MAIN_PRIVATE, 0, &node_root);
@@ -116,13 +213,24 @@ bool getPlntmntKeys(){
     hdnode_serialize_public(node_planetmint, fingerprint, PLANETMINT_PMPB, 1, sdk_ext_pub_key_planetmint, EXT_PUB_KEY_SIZE);
     hdnode_serialize_public(node_rddl, fingerprint, VERSION_PUBLIC, 1, sdk_ext_pub_key_liquid, EXT_PUB_KEY_SIZE);
 
-    secp256k1_context *ctx = NULL;
-    ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
-    secp256k1_pubkey pubkey = {0};
-    char create_pubkey = 0;
-    create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
+    resp_msg.add(sdk_address);
+    resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(sdk_ext_pub_key_liquid);
+    sendOSCMessage(resp_msg);
 
-    printHexVal(resp_msg, (char *)pubkey.data, 64);
+    // secp256k1_context *ctx = NULL;
+    // ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
+    // secp256k1_pubkey pubkey = {0};
+    // char create_pubkey = 0;
+    // create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
+
+    //printHexVal(resp_msg, (char *)pubkey.data, 64);
+    // resp_msg.add(sdk_address);
+    // sendOSCMessage(resp_msg);
+
+    bip32_key_free(node_root);
+    bip32_key_free(node_planetmint);
+    bip32_key_free(node_rddl);
 
     return true;
 }
