@@ -108,4 +108,9 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
     OSCMessage resp_msg("/getPlntmntKeys");
 
     getPlntmntKeys();
+
+    resp_msg.add(sdk_address);
+    resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(sdk_ext_pub_key_liquid);
+    sendOSCMessage(resp_msg);
 }

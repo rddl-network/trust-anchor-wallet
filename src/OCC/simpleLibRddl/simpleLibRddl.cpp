@@ -192,8 +192,6 @@ void pubkey2address(const uint8_t *pubkey, size_t key_length, uint8_t *address){
 
 
 bool getPlntmntKeys(){
-    OSCMessage resp_msg("/getPlntmntKeys");
-
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     int res = bip32_key_from_seed_alloc((const unsigned char*)tempSeed, 64, BIP32_VER_MAIN_PRIVATE, 0, &node_root);
 
@@ -212,11 +210,6 @@ bool getPlntmntKeys(){
     res = bip32_key_get_fingerprint(node_planetmint, (unsigned char*)&fingerprint, FINGERPRINT_LEN);
     hdnode_serialize_public(node_planetmint, fingerprint, PLANETMINT_PMPB, 1, sdk_ext_pub_key_planetmint, EXT_PUB_KEY_SIZE);
     hdnode_serialize_public(node_rddl, fingerprint, VERSION_PUBLIC, 1, sdk_ext_pub_key_liquid, EXT_PUB_KEY_SIZE);
-
-    resp_msg.add(sdk_address);
-    resp_msg.add(sdk_ext_pub_key_planetmint);
-    resp_msg.add(sdk_ext_pub_key_liquid);
-    sendOSCMessage(resp_msg);
 
     // secp256k1_context *ctx = NULL;
     // ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
