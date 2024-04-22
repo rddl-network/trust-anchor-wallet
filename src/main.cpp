@@ -12,7 +12,6 @@ void setup()
     SerialESP.setRxBufferSize(1024);
     SerialESP.setTxBufferSize(1024);
     delay(2);
-    Serial.println("TRUSTED ANCHOR WALLET STARTED");
 
     #ifdef DSE050
         se050_obj.init_interface(6, 7);

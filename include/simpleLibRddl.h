@@ -11,7 +11,7 @@
 #define VERSION_PUBLIC 0x0488b21e
 #define VERSION_PRIVATE 0x0488ade4
 
-bool getPlntmntKeys();
+bool getPlntmntKeys(const char* seed);
 
 constexpr uint32_t planetmint_path[] = {
     BIP32_INITIAL_HARDENED_CHILD+44,

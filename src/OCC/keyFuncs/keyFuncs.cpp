@@ -1,3 +1,4 @@
+#include <Preferences.h>
 #include "secp256k1.h"
 #include "wally_bip32.h"
 #include "wally_bip39.h"
@@ -13,6 +14,24 @@ extern "C"{
 #include "keyFuncs.h"
 #include "utils.h"
 
+void valiseSetSeed(const char* seed){
+    Preferences valise;
+
+    valise.begin("vault", false);
+    valise.putString("seed", (const char *)seed);
+    valise.end();
+}
+
+
+String valiseGetSeed(){
+    Preferences valise; 
+
+    valise.begin("vault", false);
+    String seed = valise.getString("seed", "");
+    valise.end();
+
+    return seed;
+}
 
 /**
  * Store the base seed inside the trust anchor's memory
@@ -24,17 +43,20 @@ extern "C"{
  */
 void routeSetSeed(OSCMessage &msg, int addressOffset)
 {
+    
+    char char_seed[129];
+
     if (msg.isString(0)){
         int length = msg.getDataLength(0);
-        msg.getString(0, tempSeed, length);
-
+        msg.getString(0, char_seed, length);
     }
 
+    valiseSetSeed(char_seed);
+
     OSCMessage resp_msg("/setSeed");
-    resp_msg.add(tempSeed);
+    resp_msg.add("1");
 
     sendOSCMessage(resp_msg);
-    delay(20);
 }
 
 
@@ -48,10 +70,10 @@ void routeSetSeed(OSCMessage &msg, int addressOffset)
 void routeGetSeed(OSCMessage &msg, int addressOffset)
 {
     OSCMessage resp_msg("/getSeed");
-    resp_msg.add(tempSeed);
 
+    String seed = valiseGetSeed();
+    resp_msg.add(seed.c_str());
     sendOSCMessage(resp_msg);
-    getPlntmntKeys();
 }
 
 
@@ -87,11 +109,13 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     }
 
     res = bip39_mnemonic_to_seed(mnemonic, passPhrase, bytes_out, sizeof(bytes_out), &len);
+    valiseSetSeed((const char*)bytes_out);
     OSCMessage resp_msg("/mnemonicToSeed");
 
-    String hexStr;
-    hexStr = toHex(bytes_out, 64);
-    resp_msg.add(hexStr.c_str());
+    // String hexStr;
+    // hexStr = toHex(bytes_out, 64);
+    // resp_msg.add(hexStr.c_str());
+    resp_msg.add(mnemonic);
 
     sendOSCMessage(resp_msg);
 }
@@ -107,10 +131,6 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
     OSCMessage resp_msg("/getPlntmntKeys");
 
-    getPlntmntKeys();
-
-    resp_msg.add(sdk_address);
-    resp_msg.add(sdk_ext_pub_key_planetmint);
-    resp_msg.add(sdk_ext_pub_key_liquid);
-    sendOSCMessage(resp_msg);
+    String seed = valiseGetSeed();
+    getPlntmntKeys(seed.c_str());
 }

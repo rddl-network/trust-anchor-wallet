@@ -40,7 +40,7 @@ void printHexVal(OSCMessage& resp_msg, char* data, int len){
     hexStrPrivKey = toHex((const uint8_t *)data, len);
     
     resp_msg.add(hexStrPrivKey.c_str());
-    sendOSCMessage(resp_msg);
+    // sendOSCMessage(resp_msg);
 }
 
 
@@ -191,9 +191,10 @@ void pubkey2address(const uint8_t *pubkey, size_t key_length, uint8_t *address){
 }
 
 
-bool getPlntmntKeys(){
+bool getPlntmntKeys(const char* seed){
+    OSCMessage resp_msg("/getPlntmntKeys");
     uint8_t bytes_out[BIP39_SEED_LEN_512];
-    int res = bip32_key_from_seed_alloc((const unsigned char*)tempSeed, 64, BIP32_VER_MAIN_PRIVATE, 0, &node_root);
+    int res = bip32_key_from_seed_alloc((const unsigned char*)seed, 64, BIP32_VER_MAIN_PRIVATE, 0, &node_root);
 
     bip32_key_from_parent_path_alloc(node_root, planetmint_path, 5, BIP32_FLAG_KEY_PRIVATE, &node_planetmint);
     bip32_key_from_parent_path_alloc(node_root, rddl_path, 5, BIP32_FLAG_KEY_PRIVATE, &node_rddl);
@@ -211,15 +212,17 @@ bool getPlntmntKeys(){
     hdnode_serialize_public(node_planetmint, fingerprint, PLANETMINT_PMPB, 1, sdk_ext_pub_key_planetmint, EXT_PUB_KEY_SIZE);
     hdnode_serialize_public(node_rddl, fingerprint, VERSION_PUBLIC, 1, sdk_ext_pub_key_liquid, EXT_PUB_KEY_SIZE);
 
-    // secp256k1_context *ctx = NULL;
-    // ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
-    // secp256k1_pubkey pubkey = {0};
-    // char create_pubkey = 0;
-    // create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
+    secp256k1_context *ctx = NULL;
+    ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
+    secp256k1_pubkey pubkey = {0};
+    char create_pubkey = 0;
+    create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
 
+    resp_msg.add(sdk_address);
+    resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(sdk_ext_pub_key_liquid);
     //printHexVal(resp_msg, (char *)pubkey.data, 64);
-    // resp_msg.add(sdk_address);
-    // sendOSCMessage(resp_msg);
+    sendOSCMessage(resp_msg);
 
     bip32_key_free(node_root);
     bip32_key_free(node_planetmint);
