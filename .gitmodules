@@ -7,3 +7,6 @@
 [submodule "lib/OSC"]
 	path = lib/OSC
 	url = https://github.com/rddl-network/OSC.git
+[submodule "lib/se050"]
+	path = lib/se050
+	url = https://github.com/rddl-network/seal-edge-apdu.git
