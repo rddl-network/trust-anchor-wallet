@@ -41,3 +41,7 @@ extern char sdk_ext_pub_key_planetmint[EXT_PUB_KEY_SIZE+1];
 extern char sdk_ext_pub_key_liquid[EXT_PUB_KEY_SIZE+1];
 extern char sdk_machineid_public_key_hex[33*2+1];
 extern char tempSeed[64];
+
+extern ext_key *node_root;
+extern ext_key *node_planetmint;
+extern ext_key *node_rddl;

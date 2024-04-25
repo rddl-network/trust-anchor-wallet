@@ -145,14 +145,20 @@ inline void write_be(uint8_t *data, uint32_t x) {
 
 void getAddressString(const uint8_t *address, char *stringbuffer)
 {
-     const char *hrp = "plmnt";
+    const char *hrp = "plmnt";
     size_t data_len = 32;
     uint8_t paddingbuffer[32] = {0};
     uint8_t base32_enc[100] = {0};
-    base32_encode_unsafe(address, 20, base32_enc);
+    //base32_encode_unsafe(address, 20, base32_enc);
+    //bech32_encode(stringbuffer, hrp, base32_enc, data_len);
 
-    size_t len = strlen((const char*)base32_enc);
-    bech32_encode(stringbuffer, hrp, base32_enc, data_len);
+    char *addr = NULL;
+    int res = wally_addr_segwit_from_bytes(address, HASH160_LEN + 2, hrp, 0, &addr);
+    // int res = wally_bip32_key_to_addr_segwit(node_planetmint, hrp, 0, &addr);
+    if(res == WALLY_OK)
+      strcpy(stringbuffer, addr);
+    else
+      strcpy(stringbuffer, String(res).c_str());
 }
 
 
@@ -181,18 +187,11 @@ void hdnode_serialize_public(const ext_key *node, uint32_t fingerprint,
 
 
 void pubkey2address(const uint8_t *pubkey, size_t key_length, uint8_t *address){
-    unsigned char out[32];
-    struct sha256 sha;
-    memset(&sha, 0, sizeof(struct sha256));
-    sha256(&sha, pubkey, key_length);
-    struct ripemd160 hash160;
-    ripemd160(&hash160, &sha, sizeof(sha));
-    memcpy(address, hash160.u.u8, 20);
+    wally_hash160(pubkey, key_length, address, HASH160_LEN);
 }
 
 
 bool getPlntmntKeys(const char* seed){
-    OSCMessage resp_msg("/getPlntmntKeys");
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     int res = bip32_key_from_seed_alloc((const unsigned char*)seed, 64, BIP32_VER_MAIN_PRIVATE, 0, &node_root);
 
@@ -203,7 +202,7 @@ bool getPlntmntKeys(const char* seed){
     memcpy(sdk_priv_key_liquid,     &node_rddl->priv_key[1],       32);
     memcpy(sdk_pub_key_liquid,       node_rddl->pub_key,           33);
 
-    uint8_t address_bytes[ADDRESS_TAIL] = {0};
+    uint8_t address_bytes[ADDRESS_TAIL + 2] = {0};
     pubkey2address( sdk_pub_key_planetmint, PUB_KEY_SIZE, address_bytes );
     getAddressString( address_bytes, sdk_address);
 
@@ -218,15 +217,8 @@ bool getPlntmntKeys(const char* seed){
     char create_pubkey = 0;
     create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
 
-    resp_msg.add(sdk_address);
-    resp_msg.add(sdk_ext_pub_key_planetmint);
-    resp_msg.add(sdk_ext_pub_key_liquid);
-    //printHexVal(resp_msg, (char *)pubkey.data, 64);
-    sendOSCMessage(resp_msg);
-
     bip32_key_free(node_root);
     bip32_key_free(node_planetmint);
     bip32_key_free(node_rddl);
-
     return true;
 }

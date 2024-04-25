@@ -125,7 +125,6 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
  * Get the base seed from the trust anchor's memory
  *
  * @return The stored base seed. Sending over OSC as string
-.
  */
 void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
@@ -133,4 +132,94 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 
     String seed = valiseGetSeed();
     getPlntmntKeys(seed.c_str());
+
+    resp_msg.add(sdk_address);
+    resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(sdk_ext_pub_key_liquid);
+    //printHexVal(resp_msg, (char *)pubkey.data, 64);
+    sendOSCMessage(resp_msg);
 }
+
+
+/**
+ * Sign the hash of given data with liquid priv key
+ *
+ * @param String(0) Data to be signed
+ * @return The signature and signature result 
+ */
+void routeSignRddlData(OSCMessage &msg, int addressOffset)
+{
+    OSCMessage resp_msg("/ecdsaSignRddl");
+    
+    char data[512];
+    int length = 0;
+
+    if (msg.isString(0))
+    {
+        length = msg.getDataLength(0);
+        msg.getString(0, data, length);
+    }
+
+    String seed = valiseGetSeed();
+    getPlntmntKeys(seed.c_str());
+
+    struct sha256 sha;
+    sha256(&sha, data, length - 1);
+
+    uint8_t bytes_out[EC_SIGNATURE_LEN];
+    int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
+                                        sha.u.u8, 32, EC_FLAG_ECDSA,
+                                        bytes_out, EC_SIGNATURE_LEN);
+
+    if(res == WALLY_OK)
+        res = wally_ec_sig_verify(sdk_pub_key_liquid, 33, sha.u.u8, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+
+    String hexStr;
+    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN/2);
+
+    resp_msg.add(hexStr.c_str());
+    resp_msg.add(String(res).c_str());
+    sendOSCMessage(resp_msg);
+} 
+
+
+/**
+ * Sign the hash of given data with planetmint priv key
+ *
+ * @param String(0) Data to be signed
+ * @return The signature and signature result 
+ */
+void routeSignPlmntData(OSCMessage &msg, int addressOffset)
+{
+    OSCMessage resp_msg("/ecdsaSignPlmnt");
+    
+    char data[512];
+    int length = 0;
+
+    if (msg.isString(0))
+    {
+        length = msg.getDataLength(0);
+        msg.getString(0, data, length);
+    }
+
+    String seed = valiseGetSeed();
+    getPlntmntKeys(seed.c_str());
+
+    struct sha256 sha;
+    sha256(&sha, data, length - 1);
+
+    uint8_t bytes_out[EC_SIGNATURE_LEN];
+    int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
+                                        sha.u.u8, 32, EC_FLAG_ECDSA,
+                                        bytes_out, EC_SIGNATURE_LEN);
+
+    if(res == WALLY_OK)
+        res = wally_ec_sig_verify(sdk_pub_key_planetmint, 33, sha.u.u8, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+        
+    String hexStr;
+    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN/2);
+
+    resp_msg.add(hexStr.c_str());
+    resp_msg.add(String(res).c_str());
+    sendOSCMessage(resp_msg);
+} 

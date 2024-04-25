@@ -9,6 +9,7 @@ constexpr std::pair<const char*, void(*)(OSCMessage&, int)> osc_func_table[] = {
     {"/IHW/setSeed", &routeSetSeed},
     {"/IHW/getSeed", &routeGetSeed},
     {"/IHW/mnemonicToSeed", &routeMnemonicToSeed},
-    {"/IHW/getPlntmntKeys", &routeGetPlntmntKeys}
-
+    {"/IHW/getPlntmntKeys", &routeGetPlntmntKeys},
+    {"/IHW/ecdsaSignRddl", &routeSignRddlData},
+    {"/IHW/ecdsaSignPlmnt", &routeSignPlmntData}
 };
