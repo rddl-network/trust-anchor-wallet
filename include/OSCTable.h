@@ -1,10 +1,15 @@
 #include "keyFuncs.h"
 #include "se050.h"
+#include "optigaHandler.h"
 
 constexpr std::pair<const char*, void(*)(OSCMessage&, int)> osc_func_table[] = {
 #ifdef DSE050
     {"/IHW/se050SetSeed", &routeSE050EncryptData},
     {"/IHW/se050GetSeed", &routeSE050DecryptData},
+#endif
+#ifdef DOPTIGA
+    {"/IHW/optigaTrustXCreateSecret", &routeOptigaTrustXCreateSecret},
+    {"/IHW/optigaTrustXSignMessage", &routeOptigaTrustXSignMessage},
 #endif
     {"/IHW/setSeed", &routeSetSeed},
     {"/IHW/getSeed", &routeGetSeed},

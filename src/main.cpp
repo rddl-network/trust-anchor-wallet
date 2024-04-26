@@ -3,6 +3,10 @@
 #include <SLIPEncodedSerial.h>
 #include "OSCTable.h"
 
+#ifdef DOPTIGA
+    #include "OPTIGATrustX.h"
+#endif
+
 HWCDC SerialESP;
 SLIPEncodedSerial SLIPSerial(SerialESP); // for XIAO ESP32C3
 
@@ -15,6 +19,10 @@ void setup()
 
     #ifdef DSE050
         se050_obj.init_interface(6, 7);
+    #endif
+
+    #ifdef DOPTIGA
+        trustX.begin();
     #endif
 }
 
