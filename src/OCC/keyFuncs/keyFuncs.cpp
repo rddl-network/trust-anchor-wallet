@@ -1,3 +1,6 @@
+#include <iostream>
+#include <string>
+#include <vector>
 #include <Preferences.h>
 #include "secp256k1.h"
 #include "wally_bip32.h"
@@ -14,11 +17,11 @@ extern "C"{
 #include "keyFuncs.h"
 #include "utils.h"
 
-void valiseSetSeed(const char* seed){
+void valiseSetSeed(String seed){
     Preferences valise;
 
     valise.begin("vault", false);
-    valise.putString("seed", (const char *)seed);
+    valise.putString("seed", seed.c_str());
     valise.end();
 }
 
@@ -37,21 +40,21 @@ String valiseGetSeed(){
  * Store the base seed inside the trust anchor's memory
  *
  * @param String(0) The base seed.
- * @param String(1) empty string for future use
+ * 
  * @return  Generated '0' or '1' string for failure or success. Sending over OSC as string
 
  */
 void routeSetSeed(OSCMessage &msg, int addressOffset)
 {
-    
-    char char_seed[129];
+    String seedStr{};
 
     if (msg.isString(0)){
         int length = msg.getDataLength(0);
-        msg.getString(0, char_seed, length);
+        seedStr.reserve(length);
+        msg.getString(0, &seedStr[0], length);
     }
 
-    valiseSetSeed(char_seed);
+    valiseSetSeed(seedStr);
 
     OSCMessage resp_msg("/setSeed");
     resp_msg.add("1");
@@ -105,7 +108,7 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
         uint8_t se_rnd[32] = {0};
         esp_fill_random(se_rnd, 32);
         res = bip39_mnemonic_from_bytes(NULL, se_rnd, sizeof(se_rnd), &phrase);
-        strcpy(mnemonic, phrase);
+        strcpy(mnemonic, phrase); 
     }
 
     res = bip39_mnemonic_to_seed(mnemonic, passPhrase, bytes_out, sizeof(bytes_out), &len);
