@@ -7,6 +7,10 @@
     #include "OPTIGATrustX.h"
 #endif
 
+#ifdef DSE050
+    #include "se050_middleware.h"
+#endif
+
 HWCDC SerialESP;
 SLIPEncodedSerial SLIPSerial(SerialESP); // for XIAO ESP32C3
 

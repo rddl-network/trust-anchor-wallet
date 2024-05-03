@@ -17,11 +17,12 @@ extern "C"{
 #include "keyFuncs.h"
 #include "utils.h"
 
-void valiseSetSeed(String seed){
+
+void valiseSetSeed(const char* seed){
     Preferences valise;
 
     valise.begin("vault", false);
-    valise.putString("seed", seed.c_str());
+    valise.putString("seed", seed);
     valise.end();
 }
 
@@ -30,10 +31,10 @@ String valiseGetSeed(){
     Preferences valise; 
 
     valise.begin("vault", false);
-    String seed = valise.getString("seed", "");
+    String seedStr = valise.getString("seed", "");
     valise.end();
 
-    return seed;
+    return seedStr;
 }
 
 /**
@@ -41,23 +42,25 @@ String valiseGetSeed(){
  *
  * @param String(0) The base seed.
  * 
- * @return  Generated '0' or '1' string for failure or success. Sending over OSC as string
-
+ * @return  Generated '1' string for success, error message otherwise. Sending over OSC as string
  */
 void routeSetSeed(OSCMessage &msg, int addressOffset)
 {
-    String seedStr{};
+    char seed[256];
+    int seedLen{0};
+    OSCMessage resp_msg("/setSeed");
 
     if (msg.isString(0)){
-        int length = msg.getDataLength(0);
-        seedStr.reserve(length);
-        msg.getString(0, &seedStr[0], length);
+        seedLen = msg.getDataLength(0);
+        msg.getString(0, seed, seedLen);
     }
 
-    valiseSetSeed(seedStr);
-
-    OSCMessage resp_msg("/setSeed");
-    resp_msg.add("1");
+    if(seedLen != (BIP39_SEED_LEN_512*2 + 1)){
+        resp_msg.add("Seed size must be 64! Seed String size must be 128");
+    }else{
+        valiseSetSeed(seed);
+        resp_msg.add("1");
+    }
 
     sendOSCMessage(resp_msg);
 }
@@ -68,7 +71,6 @@ void routeSetSeed(OSCMessage &msg, int addressOffset)
  *
  * @param String(0) empty string for future use
  * @return The stored base seed. Sending over OSC as string
-.
  */
 void routeGetSeed(OSCMessage &msg, int addressOffset)
 {
@@ -95,6 +97,7 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     char mnemonic[256];
     char passPhrase[64] = "";
+    OSCMessage resp_msg("/mnemonicToSeed");
 
     if (msg.isString(0))
     {
@@ -112,12 +115,10 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     }
 
     res = bip39_mnemonic_to_seed(mnemonic, passPhrase, bytes_out, sizeof(bytes_out), &len);
-    valiseSetSeed((const char*)bytes_out);
-    OSCMessage resp_msg("/mnemonicToSeed");
-
-    // String hexStr;
-    // hexStr = toHex(bytes_out, 64);
-    // resp_msg.add(hexStr.c_str());
+    String hexStr;
+    hexStr = toHex(bytes_out, 64);
+    valiseSetSeed(hexStr.c_str());
+    
     resp_msg.add(mnemonic);
 
     sendOSCMessage(resp_msg);
@@ -133,13 +134,12 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
     OSCMessage resp_msg("/getPlntmntKeys");
 
-    String seed = valiseGetSeed();
-    getPlntmntKeys(seed.c_str());
+    String seedStr = valiseGetSeed();
+    getPlntmntKeys((const char *)fromhex(seedStr.c_str()));
 
     resp_msg.add(sdk_address);
     resp_msg.add(sdk_ext_pub_key_planetmint);
     resp_msg.add(sdk_ext_pub_key_liquid);
-    //printHexVal(resp_msg, (char *)pubkey.data, 64);
     sendOSCMessage(resp_msg);
 }
 
@@ -148,7 +148,7 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
  * Sign the hash of given data with liquid priv key
  *
  * @param String(0) Data to be signed
- * @return The signature and signature result 
+ * @return The signature in string format and signature result 0 means successfull verification.
  */
 void routeSignRddlData(OSCMessage &msg, int addressOffset)
 {
@@ -163,8 +163,8 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
-    String seed = valiseGetSeed();
-    getPlntmntKeys(seed.c_str());
+    String seedStr = valiseGetSeed();
+    getPlntmntKeys((const char *)fromhex(seedStr.c_str()));
 
     struct sha256 sha;
     sha256(&sha, data, length - 1);
@@ -190,7 +190,7 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
  * Sign the hash of given data with planetmint priv key
  *
  * @param String(0) Data to be signed
- * @return The signature and signature result 
+ * @return The signature in string format and signature result 0 means successfull verification.
  */
 void routeSignPlmntData(OSCMessage &msg, int addressOffset)
 {
@@ -205,8 +205,8 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
-    String seed = valiseGetSeed();
-    getPlntmntKeys(seed.c_str());
+    String seedStr = valiseGetSeed();
+    getPlntmntKeys((const char *)fromhex(seedStr.c_str()));
 
     struct sha256 sha;
     sha256(&sha, data, length - 1);

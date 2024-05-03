@@ -149,16 +149,8 @@ void getAddressString(const uint8_t *address, char *stringbuffer)
     size_t data_len = 32;
     uint8_t paddingbuffer[32] = {0};
     uint8_t base32_enc[100] = {0};
-    //base32_encode_unsafe(address, 20, base32_enc);
-    //bech32_encode(stringbuffer, hrp, base32_enc, data_len);
-
-    char *addr = NULL;
-    int res = wally_addr_segwit_from_bytes(address, HASH160_LEN + 2, hrp, 0, &addr);
-    // int res = wally_bip32_key_to_addr_segwit(node_planetmint, hrp, 0, &addr);
-    if(res == WALLY_OK)
-      strcpy(stringbuffer, addr);
-    else
-      strcpy(stringbuffer, String(res).c_str());
+    base32_encode_unsafe(address, 20, base32_enc);
+    bech32_encode(stringbuffer, hrp, base32_enc, data_len);
 }
 
 
@@ -211,11 +203,11 @@ bool getPlntmntKeys(const char* seed){
     hdnode_serialize_public(node_planetmint, fingerprint, PLANETMINT_PMPB, 1, sdk_ext_pub_key_planetmint, EXT_PUB_KEY_SIZE);
     hdnode_serialize_public(node_rddl, fingerprint, VERSION_PUBLIC, 1, sdk_ext_pub_key_liquid, EXT_PUB_KEY_SIZE);
 
-    secp256k1_context *ctx = NULL;
-    ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
-    secp256k1_pubkey pubkey = {0};
-    char create_pubkey = 0;
-    create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
+    // secp256k1_context *ctx = NULL;
+    // ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
+    // secp256k1_pubkey pubkey = {0};
+    // char create_pubkey = 0;
+    // create_pubkey = secp256k1_ec_pubkey_create(ctx, &pubkey, private_key_machine_id);
 
     bip32_key_free(node_root);
     bip32_key_free(node_planetmint);
