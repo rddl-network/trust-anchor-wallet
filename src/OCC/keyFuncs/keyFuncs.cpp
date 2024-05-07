@@ -182,9 +182,11 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
 
 
 /**
- * Get the base seed from the trust anchor's memory
+ * Generates and return Planetmint and Liquid addresses by using Seed
  *
- * @return The stored base seed. Sending over OSC as string
+ * @return(0) String sdk_address
+ * @return(1) String liquid public key
+ * @return(2) String planetmint public key
  */
 void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
