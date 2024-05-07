@@ -19,10 +19,9 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
     uint32_t ts = 0;
 
     /* OPTIGA Trust X support up to 4 contexts to store you private key  */
-    uint16_t ctx = 4;
+    int ctx = 4;
     uint16_t pubKeyLen = 68;
     uint8_t pubKey [68];
-
 
     if(msg.isInt(0))
     {
@@ -47,7 +46,7 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
     }
 
     if(ctx >= 4){
-        resp_msg.add("Non valid secret key register\n");
+        resp_msg.add(String(ctx).c_str());
         sendOSCMessage(resp_msg);
         return;
     }
@@ -68,7 +67,17 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
     sendOSCMessage(resp_msg);
 }
 
-
+/**
+ * Sign given data 
+ *
+ * @param int(0) Object ID defines which slot will be used. Should be between 0-3
+ * @param string(1) String type data to be signed in Hex format
+ * @param string(2) Public key to verify signature in Hex format
+ * 
+ * @return(0) String type signature in Hex format
+ * @return(1) Integer Signature Len
+ * @return(2) String Verify Result
+ */
 void routeOptigaTrustXSignMessage(OSCMessage &msg, int addressOffset)
 {
     uint32_t ret = 0;

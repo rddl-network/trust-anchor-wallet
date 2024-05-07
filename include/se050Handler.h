@@ -13,5 +13,10 @@ void routeSe050CreateKeyPair(OSCMessage &msg, int addressOffset);
 void routeSe050CalculateHash(OSCMessage &msg, int addressOffset);
 void routeSe050SignData(OSCMessage &msg, int addressOffset);
 void routeSe050VerifySignature(OSCMessage &msg, int addressOffset);
+int se050SetSeed(const char* seedStr, int seedLen, int overrideFlag, char* errMsg);
+std::vector<uint8_t> se050GetSeed();
+
+class Se050Middleware;
+extern Se050Middleware se050_handler_o; 
 
 #endif

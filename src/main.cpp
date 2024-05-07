@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <OSCBundle.h>
 #include <SLIPEncodedSerial.h>
-#include "OSCTable.h"
 
 #ifdef DOPTIGA
     #include "OPTIGATrustX.h"
@@ -9,7 +8,10 @@
 
 #ifdef DSE050
     #include "se050_middleware.h"
+    #include "se050Handler.h"
 #endif
+
+#include "OSCFuncTable.h"
 
 HWCDC SerialESP;
 SLIPEncodedSerial SLIPSerial(SerialESP); // for XIAO ESP32C3
@@ -20,12 +22,12 @@ void setup()
     SerialESP.setRxBufferSize(1024);
     SerialESP.setTxBufferSize(1024);
 
-    #ifdef DSE050
-        se050_obj.init_interface(6, 7);
-    #endif
-
     #ifdef DOPTIGA
         trustX.begin();
+    #endif
+
+    #ifdef DSE050
+        se050_handler_o.init_interface(6, 7);
     #endif
 }
 

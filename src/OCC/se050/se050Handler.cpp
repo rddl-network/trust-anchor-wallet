@@ -1,7 +1,7 @@
 #ifdef DSE050
 
-#include "se050Handler.h"
 #include "se050_middleware.h"
+#include "se050Handler.h"
 #include "utils.h"
 
 extern "C"{
@@ -9,9 +9,13 @@ extern "C"{
     #include "ccan/ccan/crypto/sha256/sha256.h"
 }
 
-constexpr int BINARY_RW_SLOT = 225;
-constexpr int BINARY_READ_SIZE = 64;
+#define SE050_USED_SLOT     200
+
+constexpr int BINARY_RW_SLOT    = SE050_USED_SLOT + 1;
+constexpr int BINARY_READ_SIZE  = 64;
 constexpr int DEFAULT_OVERRIDE_FLAG = 0; // 0: Dont override se050 slot, 1: Override
+
+Se050Middleware se050_handler_o{SE050_USED_SLOT}; 
 
 std::vector<uint8_t> getAESEncrypt(const std::string plainp, const uint8_t* key){
     int plainTextLen = plainp.length()-1;
@@ -75,11 +79,11 @@ void routeSE050EncryptData(OSCMessage &msg, int addressOffset)
         }
 
         if(overrideFlash != 0)
-            se050_obj.delete_obj(BINARY_RW_SLOT);
+            se050_handler_o.delete_obj(BINARY_RW_SLOT);
 
         std::vector<uint8_t> cipherArr = getAESEncrypt(plainTxt, sha.u.u8);
 
-        if(se050_obj.write_binary_data(BINARY_RW_SLOT, cipherArr) == cipherArr.size())
+        if(se050_handler_o.write_binary_data(BINARY_RW_SLOT, cipherArr) == cipherArr.size())
             resp_msg.add("Binary Data Written");
         else
             resp_msg.add("ERROR! Write Binary Data");
@@ -112,16 +116,42 @@ void routeSE050DecryptData(OSCMessage &msg, int addressOffset)
         sha256(&sha, fromhex(key.data()), (key.size()-1)/2);
     }
 
-    auto cipherp = se050_obj.read_binary_data(BINARY_RW_SLOT, BINARY_READ_SIZE);
+    auto cipherp = se050_handler_o.read_binary_data(BINARY_RW_SLOT, BINARY_READ_SIZE);
     auto plainArr = getAESDecrypt(cipherp, sha.u.u8);
 
     String hexStr;
     hexStr = toHex(plainArr.data(), plainArr.size());
     resp_msg.add(hexStr.c_str());
-    resp_msg.add(se050_obj.oss.str().c_str());
+    resp_msg.add(se050_handler_o.oss.str().c_str());
 
     sendOSCMessage(resp_msg);
 }
+
+
+int se050SetSeed(const char* seedStr, int seedLen, int overrideFlag, char* errMsg){
+
+    if(seedLen != (BINARY_READ_SIZE*2 + 1)){
+        strcpy(errMsg, "ERROR! Seed size must be 64! Seed String size must be 128");
+        return 0;
+    }
+
+    if(se050_handler_o.check_obj_exist(BINARY_RW_SLOT)){
+        if(overrideFlag != 0)
+            se050_handler_o.delete_obj(BINARY_RW_SLOT);
+        else{
+            strcpy(errMsg, "ERROR! There is an object on the slot!");
+            return -1;
+        }
+    }
+
+    auto seedPtr = fromhex(seedStr);
+    std::vector<uint8_t> data( seedPtr, seedPtr + BINARY_READ_SIZE);
+    int writtenSize = se050_handler_o.write_binary_data(BINARY_RW_SLOT, data);
+    se050_handler_o.read_error_msg(errMsg);
+
+    return writtenSize;
+}
+
 
 
 /**
@@ -138,7 +168,7 @@ void routeSe050SetSeed(OSCMessage &msg, int addressOffset)
     OSCMessage resp_msg("/se050SetSeed");
     char seed[256];
     int seedLen{0}, writtenSize{0};
-    int overrideFlash = DEFAULT_OVERRIDE_FLAG;
+    int overrideFlag = DEFAULT_OVERRIDE_FLAG;
     char errMsg[100];
  
     if (msg.isString(0))
@@ -146,36 +176,23 @@ void routeSe050SetSeed(OSCMessage &msg, int addressOffset)
         seedLen = msg.getDataLength(0);
         msg.getString(0, seed, seedLen);
 
-        if(seedLen != (BINARY_READ_SIZE*2 + 1)){
-            strcpy(errMsg, "Seed size must be 64! Seed String size must be 128");
-            goto SetSeedSendOSC;
-        }
-
         if (msg.isInt(1))
         {
-           overrideFlash = msg.getInt(1);
+           overrideFlag = msg.getInt(1);
         }
 
-        if(se050_obj.check_obj_exist(BINARY_RW_SLOT)){
-            if(overrideFlash != 0)
-                se050_obj.delete_obj(BINARY_RW_SLOT);
-            else{
-                strcpy(errMsg, "ERROR! There is a seed written");
-                goto SetSeedSendOSC;
-            }
-        }
-        
-        auto seedPtr = fromhex(seed);
-        std::vector<uint8_t> data( seedPtr, seedPtr + BINARY_READ_SIZE);
-        writtenSize = se050_obj.write_binary_data(BINARY_RW_SLOT, data);
-        se050_obj.read_error_msg(errMsg);
+        writtenSize = se050SetSeed(seed, seedLen, overrideFlag, errMsg);
     }
 
-SetSeedSendOSC:
-    resp_msg.add(String(writtenSize));
-    resp_msg.add(errMsg);
 
+    resp_msg.add(String(writtenSize).c_str());
+    resp_msg.add(errMsg);
     sendOSCMessage(resp_msg);
+}
+
+
+std::vector<uint8_t> se050GetSeed(){
+    return se050_handler_o.read_binary_data(BINARY_RW_SLOT, BINARY_READ_SIZE);
 }
 
 
@@ -188,7 +205,7 @@ void routeSe050GetSeed(OSCMessage &msg, int addressOffset)
 {
     OSCMessage resp_msg("/se050GetSeed");
     
-    auto readData = se050_obj.read_binary_data(BINARY_RW_SLOT, BINARY_READ_SIZE);
+    auto readData = se050GetSeed();
 
     String hexStr;
     hexStr = toHex(readData.data(), readData.size());
@@ -200,6 +217,9 @@ void routeSe050GetSeed(OSCMessage &msg, int addressOffset)
 /**
  * Creates key pair in se050
  * 
+ * @param int(0) <optional> Override Flag. 0: Dont create, if there is key on SE050 slot
+ *                                         1: Delete previous one and create new.
+ * 
  * @return(0) Public Key in string type
  * @return(1) Error message if any
  */
@@ -208,17 +228,26 @@ void routeSe050CreateKeyPair(OSCMessage &msg, int addressOffset)
     OSCMessage resp_msg("/se050CreateKeyPair");
     char errMsg[100];
     String hexStr;
+    int overrideFlash = DEFAULT_OVERRIDE_FLAG;
 
-    if(se050_obj.check_obj_exist(se050_obj.get_key_id())){
+    if (msg.isInt(0))
+    {
+        overrideFlash = msg.getInt(0);
+    }
+
+    if(overrideFlash == 1)
+        se050_handler_o.delete_obj(se050_handler_o.get_key_id());
+
+    if(se050_handler_o.check_obj_exist(se050_handler_o.get_key_id())){
         resp_msg.add(hexStr.c_str());
-        resp_msg.add("There is an object on the slot!");
+        resp_msg.add("ERROR! There is an object on the slot!");
     }else{
-        se050_obj.generate_key_pair_nistp256();
-        se050_obj.read_error_msg(errMsg);
+        se050_handler_o.generate_key_pair_nistp256();
+        se050_handler_o.read_error_msg(errMsg);
 
         if(strlen(errMsg) == 0){ 
-            auto pubKey = se050_obj.get_public_key();
-            se050_obj.read_error_msg(errMsg);
+            auto pubKey = se050_handler_o.get_public_key();
+            se050_handler_o.read_error_msg(errMsg);
             hexStr = toHex(pubKey.data(), pubKey.size());
         }
         
@@ -253,8 +282,8 @@ void routeSe050CalculateHash(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, dataLen);
 
         std::vector<uint8_t> hashInput(data, data + (dataLen-1));
-        auto hashVec = se050_obj.calculate_sha256(hashInput);
-        se050_obj.read_error_msg(errMsg);
+        auto hashVec = se050_handler_o.calculate_sha256(hashInput);
+        se050_handler_o.read_error_msg(errMsg);
 
         hexStr = toHex(hashVec.data(), hashVec.size());
     }
@@ -288,11 +317,16 @@ void routeSe050SignData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, dataLen);
 
         auto t = fromhex(data);
-        std::vector<uint8_t> signInput(data, data + ((dataLen-1)/2));
-        auto signature = se050_obj.sign_sha256_digest(signInput);
-        se050_obj.read_error_msg(errMsg);
+        std::vector<uint8_t> signInput(t, t + ((dataLen-1)/2));
+        auto signature = se050_handler_o.sign_sha256_digest(signInput);
+        se050_handler_o.read_error_msg(errMsg);
 
         hexStr = toHex(signature.data(), signature.size());
+
+        if(strlen(errMsg) == 0){
+            auto verifyRes = se050_obj.verify_sha256_digest(signInput, signature);
+            se050_handler_o.read_error_msg(errMsg);
+        }
     }
 
     resp_msg.add(hexStr.c_str());
@@ -325,7 +359,7 @@ void routeSe050VerifySignature(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, dataLen);
 
         auto t = fromhex(data);
-        std::vector<uint8_t> digest(data, data + ((dataLen-1)/2));
+        std::vector<uint8_t> digest(t, t + ((dataLen-1)/2));
 
         if (msg.isString(1))
         {
@@ -334,11 +368,13 @@ void routeSe050VerifySignature(OSCMessage &msg, int addressOffset)
             msg.getString(1, data, dataLen);
 
             t = fromhex(data);
-            std::vector<uint8_t> signature(data, data + ((dataLen-1)/2));
+            std::vector<uint8_t> signature(t, t + ((dataLen-1)/2));
 
-            result = se050_obj.verify_sha256_digest(digest, signature);
-            se050_obj.read_error_msg(errMsg);
+            result = se050_handler_o.verify_sha256_digest(digest, signature);
+            se050_handler_o.read_error_msg(errMsg);
         }
+
+
     }
 
     resp_msg.add(result);
