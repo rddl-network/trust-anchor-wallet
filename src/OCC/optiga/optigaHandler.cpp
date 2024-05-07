@@ -1,5 +1,6 @@
 #ifdef DOPTIGA
 
+#include <sstream>
 #include "utils.h"
 #include "OPTIGATrustX.h"
 #include "optigaHandler.h"
@@ -14,50 +15,39 @@
  */
 void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
 {
-    OSCMessage resp_msg("/optigaTrustXCreateSecret");
-    uint32_t ret = 0;
-    uint32_t ts = 0;
-
-    /* OPTIGA Trust X support up to 4 contexts to store you private key  */
-    int ctx = 4;
+    OSCMessage resp_msg("/optigaCreateSecret");
+    int32_t ctx{4};
     uint16_t pubKeyLen = 68;
     uint8_t pubKey [68];
 
     if(msg.isInt(0))
     {
         ctx = msg.getInt(0);
-        switch(ctx)
-        {
-            case 0: 
-                ctx = eFIRST_DEVICE_PRIKEY_1; 
-                break;
-            case 1: 
-                ctx = eFIRST_DEVICE_PRIKEY_2; 
-                break;
-            case 2: 
-                ctx = eFIRST_DEVICE_PRIKEY_3; 
-                break;
-            case 3: 
-                ctx = eFIRST_DEVICE_PRIKEY_4; 
-                break;
-            default: 
-                break;
-        }
     }
 
-    if(ctx >= 4){
-        resp_msg.add(String(ctx).c_str());
-        sendOSCMessage(resp_msg);
-        return;
+    switch(ctx){
+        case 0: 
+            ctx = eFIRST_DEVICE_PRIKEY_1; 
+            break;
+        case 1: 
+            ctx = eFIRST_DEVICE_PRIKEY_2; 
+            break;
+        case 2: 
+            ctx = eFIRST_DEVICE_PRIKEY_3; 
+            break;
+        case 3: 
+            ctx = eFIRST_DEVICE_PRIKEY_4; 
+            break;
+        default: 
+            resp_msg.add("Non valid secret key register");
+            sendOSCMessage(resp_msg);
+            return;
     }
-
+    
     /*
     * Generate a keypair#1
     */
-    ts = millis();
-    ret = trustX.generateKeypair(pubKey, pubKeyLen, ctx);
-    ts = millis() - ts;
-
+    trustX.generateKeypair(pubKey, pubKeyLen, ctx);
 
     /* Requirement by Arduino to stream strings back to requestor */
     String hexStr;
@@ -66,6 +56,7 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
     resp_msg.add(hexStr.c_str());
     sendOSCMessage(resp_msg);
 }
+
 
 /**
  * Sign given data 
@@ -80,6 +71,8 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
  */
 void routeOptigaTrustXSignMessage(OSCMessage &msg, int addressOffset)
 {
+    OSCMessage resp_msg("/optigaSignMessage");
+    std::ostringstream resp; 
     uint32_t ret = 0;
     uint32_t ts = 0;  /* OPTIGA Trust X support up to 4 contexts to store you private key  */
 
@@ -122,7 +115,9 @@ void routeOptigaTrustXSignMessage(OSCMessage &msg, int addressOffset)
                 ctx_v = eDEVICE_PUBKEY_CERT_PRJSPC_3; 
                 break;
             default: 
-                Serial.println("\nNon valid secret key register\n");
+                resp_msg.add("Non valid secret key register");
+                sendOSCMessage(resp_msg);
+                return;
         }
     }
 
@@ -143,35 +138,23 @@ void routeOptigaTrustXSignMessage(OSCMessage &msg, int addressOffset)
     /*
     * Get the public key
     */
-
-    ts = millis();
-    ret = trustX.calculateSignature(hash, hashLen, ctx_s, signature, sigLen);
-    //ret = trustX.calculateSignature(hash, hashLen, signature, sigLen);
-    ts = millis() - ts;
+    trustX.calculateSignature(hash, hashLen, ctx_s, signature, sigLen);
 
     /* Verify the signature */
-    ts = millis();
-    ret = trustX.verifySignature(hash, hashLen, signature, sigLen, pubkey, sizeof(pubkey));
-    //ret = trustX.verifySignature(hash, hashLen, signature, sigLen, ifxPublicKey, sizeof(ifxPublicKey));
-    ts = millis() - ts;
-
-    char *resp = "true";
-    if (ret) {
-        resp = "false";
-    }
+    if(trustX.verifySignature(hash, hashLen, signature, sigLen, pubkey, sizeof(pubkey)) == 0)
+        resp << "true";
+    else
+        resp << "false";
 
     /* Requirement by Arduino to stream strings back to requestor */
     String hexStr;
     hexStr = toHex(signature, sigLen);
 
-    OSCMessage resp_msg("/optigaTrustXSignMessage");
+    
     resp_msg.add(hexStr.c_str());
-    //resp_msg.add(str_hash);
     resp_msg.add(int32_t(sigLen));
-
-    //resp_msg.add(int32_t(response));
-    resp_msg.add(resp);
-    sendOSCMessage(resp_msg);
+    resp_msg.add(resp.str().c_str());
+    sendOSCMessage(resp_msg);    
 }
 
 
