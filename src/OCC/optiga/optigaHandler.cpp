@@ -15,10 +15,11 @@
  */
 void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
 {
-    OSCMessage resp_msg("/optigaCreateSecret");
+    OSCMessage resp_msg("/optigaTrustXCreateSecret");
+    String hexStr{"0"};
     int32_t ctx{4};
     uint16_t pubKeyLen = 68;
-    uint8_t pubKey [68];
+    uint8_t pubKey [68] = {0};
 
     if(msg.isInt(0))
     {
@@ -47,12 +48,10 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
     /*
     * Generate a keypair#1
     */
-    trustX.generateKeypair(pubKey, pubKeyLen, ctx);
+    if(trustX.generateKeypair(pubKey, pubKeyLen, ctx) == 0)
+        hexStr = toHex(pubKey, pubKeyLen);
 
     /* Requirement by Arduino to stream strings back to requestor */
-    String hexStr;
-    hexStr = toHex(pubKey, pubKeyLen);
-
     resp_msg.add(hexStr.c_str());
     sendOSCMessage(resp_msg);
 }
@@ -71,7 +70,7 @@ void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
  */
 void routeOptigaTrustXSignMessage(OSCMessage &msg, int addressOffset)
 {
-    OSCMessage resp_msg("/optigaSignMessage");
+    OSCMessage resp_msg("/optigaTrustXSignMessage");
     std::ostringstream resp; 
     uint32_t ret = 0;
     uint32_t ts = 0;  /* OPTIGA Trust X support up to 4 contexts to store you private key  */

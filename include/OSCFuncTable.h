@@ -12,8 +12,8 @@ constexpr std::pair<const char*, void(*)(OSCMessage&, int)> osc_func_table[] = {
     {"/IHW/se050VerifySignature",       &routeSe050VerifySignature},
 #endif
 #ifdef DOPTIGA
-    {"/IHW/optigaCreateSecret",         &routeOptigaTrustXCreateSecret},
-    {"/IHW/optigaSignMessage",          &routeOptigaTrustXSignMessage},
+    {"/IHW/optigaTrustXCreateSecret",   &routeOptigaTrustXCreateSecret},
+    {"/IHW/optigaTrustXSignMessage",    &routeOptigaTrustXSignMessage},
 #endif
     {"/IHW/setSeed",                    &routeSetSeed},
     {"/IHW/getSeed",                    &routeGetSeed},
