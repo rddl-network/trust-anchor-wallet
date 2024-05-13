@@ -128,7 +128,7 @@ void routeGetSeed(OSCMessage &msg, int addressOffset)
 
 /**
  * Get the base seed from the trust anchor's memory
- * @param string(0) <optional> Override Flag. 0: Dont write, if there is any data on SE050
+ * @param int(0) <optional> Override Flag. 0: Dont write, if there is any data on SE050
  *                                            1: Write anyway 
  * @param String(1) <optional> Mnemonic. If it is NULL, the function generate one
  * @param String(2) <optional> Passphrase. 
@@ -138,12 +138,12 @@ void routeGetSeed(OSCMessage &msg, int addressOffset)
  */
 void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
 {
-    int res;
+    int res; 
     size_t len;
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     char mnemonic[256];
     char passPhrase[64] = "";
-    int overrideFlag = 0;
+    int overrideFlag = 0;  
     char errMsg[100] = {0};
     OSCMessage resp_msg("/mnemonicToSeed");
 
