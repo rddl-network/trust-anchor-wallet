@@ -346,7 +346,7 @@ void routeSe050SignData(OSCMessage &msg, int addressOffset)
  */
 void routeSe050VerifySignature(OSCMessage &msg, int addressOffset)
 {
-    OSCMessage resp_msg("/se050SignData");
+    OSCMessage resp_msg("/se050VerifySignature");
     
     bool result{false};
     char data[512] = {0};

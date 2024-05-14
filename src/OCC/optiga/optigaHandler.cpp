@@ -11,7 +11,7 @@
  *
  * @param int(0) Object ID defines which slot will be used. Should be between 0-3
  * 
- * @return Public Key in string type
+ * @return Public Key in string type. Return "0" if it fails
  */
 void routeOptigaTrustXCreateSecret(OSCMessage &msg, int addressOffset)
 {
