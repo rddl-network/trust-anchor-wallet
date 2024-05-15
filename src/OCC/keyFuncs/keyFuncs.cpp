@@ -220,13 +220,21 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
     {
         length = msg.getDataLength(0);
         msg.getString(0, data, length);
+        // Last char is /0
+        length -= 1;
+    }
+
+    if (msg.isBlob(0))
+    {
+        length = msg.getBlobLength(0);
+        msg.getBlob(0, reinterpret_cast<uint8_t*>(data));
     }
 
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
     struct sha256 sha;
-    sha256(&sha, data, length - 1);
+    sha256(&sha, data, length);
 
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
@@ -263,13 +271,21 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
     {
         length = msg.getDataLength(0);
         msg.getString(0, data, length);
+        // Last char is /0
+        length -= 1;
+    }
+
+    if (msg.isBlob(0))
+    {
+        length = msg.getBlobLength(0);
+        msg.getBlob(0, reinterpret_cast<uint8_t*>(data));
     }
 
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
     struct sha256 sha;
-    sha256(&sha, data, length - 1);
+    sha256(&sha, data, length);
 
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
