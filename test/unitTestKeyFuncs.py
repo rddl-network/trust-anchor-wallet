@@ -69,7 +69,7 @@ def send_osc_message(msg, cmd):
 class TestTWFunctions(unittest.TestCase):
 	def test_01_set_seed(self):
 		# Mock OSC message
-		msg = OSCMessage('/IHW/setSeed',',si',["e7d2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d", 0])
+		msg = OSCMessage('/IHW/setSeed',',si',["e7d2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d", 1])
 
 		# Mock response
 		expected_response = "64"
@@ -142,7 +142,7 @@ class TestTWFunctions(unittest.TestCase):
 		tMnemonic = "bonus acid virtual banner mansion waste student fade faint burst sister any"
 
 		# Mock OSC message
-		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[0, tMnemonic])
+		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[1, tMnemonic])
 
 		# Mock response
 		expected_response = tMnemonic
