@@ -187,6 +187,7 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
  * @return(0) String sdk_address
  * @return(1) String liquid public key
  * @return(2) String planetmint public key
+ * @return(3) String of raw planetmint public key as hex string 
  */
 void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
@@ -195,9 +196,15 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
+    String hexStrPubKey;
+    hexStrPubKey = toHex((const uint8_t *)sdk_pub_key_planetmint, 33);
+    
+
+
     resp_msg.add(sdk_address);
     resp_msg.add(sdk_ext_pub_key_liquid);
     resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(hexStrPubKey.c_str());
     sendOSCMessage(resp_msg);
 }
 
