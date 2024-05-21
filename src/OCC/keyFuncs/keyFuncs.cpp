@@ -212,7 +212,7 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 /**
  * Sign the hash of given data with liquid priv key
  *
- * @param String(0) Data to be signed
+ * @param String(0) Data to be signed in hex format
  * 
  * @return The signature in string format and signature result 0 means successfull verification.
  */
@@ -229,11 +229,14 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
+    auto t = fromhex(data);
+    std::vector<uint8_t> signInput(t, t + ((length-1)/2));
+
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
     struct sha256 sha;
-    sha256(&sha, data, length - 1);
+    sha256(&sha, signInput.data(), signInput.size());
 
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
@@ -255,7 +258,7 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
 /**
  * Sign the hash of given data with planetmint priv key
  *
- * @param String(0) Data to be signed
+ * @param String(0) Data to be signed in hex format
  * 
  * @return The signature in string format and signature result 0 means successfull verification.
  */
@@ -272,11 +275,14 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
+    auto t = fromhex(data);
+    std::vector<uint8_t> signInput(t, t + ((length-1)/2));
+
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
     struct sha256 sha;
-    sha256(&sha, data, length - 1);
+    sha256(&sha, signInput.data(), signInput.size());
 
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
