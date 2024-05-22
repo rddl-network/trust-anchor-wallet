@@ -44,12 +44,16 @@ const uint8_t *fromhex(const char *str)
         uint8_t c = 0;
         if (str[i * 2] >= '0' && str[i * 2] <= '9')
             c += (str[i * 2] - '0') << 4;
-        if ((str[i * 2] & ~0x20) >= 'A' && (str[i * 2] & ~0x20) <= 'F')
-            c += (10 + (str[i * 2] & ~0x20) - 'A') << 4;
+        if ((str[i * 2] ) >= 'A' && (str[i * 2] ) <= 'F')
+            c += (10 + (str[i * 2] ) - 'A') << 4;
+        if ((str[i * 2] ) >= 'a' && (str[i * 2] ) <= 'f')
+            c += (10 + (str[i * 2] ) - 'a') << 4;
         if (str[i * 2 + 1] >= '0' && str[i * 2 + 1] <= '9')
             c += (str[i * 2 + 1] - '0');
-        if ((str[i * 2 + 1] & ~0x20) >= 'A' && (str[i * 2 + 1] & ~0x20) <= 'F')
-            c += (10 + (str[i * 2 + 1] & ~0x20) - 'A');
+        if ((str[i * 2 + 1]) >= 'A' && (str[i * 2 + 1] ) <= 'F')
+            c += (10 + (str[i * 2 + 1] ) - 'A');
+        if ((str[i * 2 + 1] ) >= 'a' && (str[i * 2 + 1] ) <= 'f')
+            c += (10 + (str[i * 2 + 1] ) - 'a');
         buf[i] = c;
     }
     return buf;

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 ser = serial.Serial(
         # Serial Port to read the data from
-        port='/dev/ttyACM1',
+        port='/dev/ttyACM0',
 
         #Rate at which the information is shared to the communication channel
         baudrate = 115200,
@@ -121,7 +121,7 @@ class TestTWFunctions(unittest.TestCase):
 		response = send_osc_message(msg, "/ecdsaSignRddl")
 
 		# Assert that the response matches the expected response
-		self.assertEqual(len(response[0]), 64)
+		self.assertEqual(len(response[0]), 128)
 		self.assertEqual(response[1], expected_response)
 
 	def test_05_sign_rddl(self):
@@ -135,7 +135,7 @@ class TestTWFunctions(unittest.TestCase):
 		response = send_osc_message(msg, "/ecdsaSignPlmnt")
 
 		# Assert that the response matches the expected response
-		self.assertEqual(len(response[0]), 64)
+		self.assertEqual(len(response[0]), 128)
 		self.assertEqual(response[1], expected_response)
 
 	def test_06_mnemonic_to_seed_inject(self):
@@ -165,6 +165,47 @@ class TestTWFunctions(unittest.TestCase):
 
 		# Assert that the response matches the expected response
 		self.assertEqual(response[0], expected_response)
+
+
+	def test_07_sign_plmnt(self):
+		tMnemonic = "penalty police pool orphan snack faith educate syrup skill picnic prepare mystery dune control near nation report evolve ethics genius elite tool rigid crane"
+
+		# Mock OSC message
+		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[0, tMnemonic])
+
+		# Mock response
+		expected_response = tMnemonic
+
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/mnemonicToSeed")
+
+		# Assert that the response matches the expected response
+		self.assertEqual(response[0], expected_response)
+		hash_digest = "c890f865f3b05f7827034aae6ac25cd5cbca5d25eb0f0c35df5d33903e08fabe"
+		msg2 = OSCMessage("/IHW/ecdsaSignPlmnt", ",s", [hash_digest])
+		occ_message = send_osc_message(msg2, "/ecdsaSignPlmnt")
+		self.assertEqual( "b5af3756630c182dc238e553e23d287de7123b9c3dfd346924b58373eb92a236027dbb49d131b7afd4f9ab4575db4376b6c3ee4cb0c3b8a079d76fc28028f842", occ_message[0])
+
+	def test_08_sign_plmnt2(self):
+		tMnemonic = "penalty police pool orphan snack faith educate syrup skill picnic prepare mystery dune control near nation report evolve ethics genius elite tool rigid crane"
+
+		# Mock OSC message
+		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[0, tMnemonic])
+
+		# Mock response
+		expected_response = tMnemonic
+
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/mnemonicToSeed")
+
+		# Assert that the response matches the expected response
+		self.assertEqual(response[0], expected_response)
+		hash_digest = "6bc7f47039987062ffbeb1accd12f723056fe92e37aa92cc433660d13f562d99"
+		msg2 = OSCMessage("/IHW/ecdsaSignPlmnt", ",s", [hash_digest])
+		occ_message = send_osc_message(msg2, "/ecdsaSignPlmnt")
+		self.assertEqual( "464c3ed2749a6a07beea0ef04ac638c1d51a9f11bca5f8ece75c79c8bcee94346e04a264528f3ecd1144be28dcb4f06c5d5c74c18cf1644b09830f5331551d51", occ_message[0])
+
+
 
 
 if __name__ == "__main__":

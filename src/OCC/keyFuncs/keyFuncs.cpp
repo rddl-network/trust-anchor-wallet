@@ -187,6 +187,7 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
  * @return(0) String sdk_address
  * @return(1) String liquid public key
  * @return(2) String planetmint public key
+ * @return(3) String of raw planetmint public key as hex string
  */
 void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
 {
@@ -195,9 +196,13 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
+    String hexStrPubKey;
+    hexStrPubKey = toHex((const uint8_t *)sdk_pub_key_planetmint, 33);
+
     resp_msg.add(sdk_address);
     resp_msg.add(sdk_ext_pub_key_liquid);
     resp_msg.add(sdk_ext_pub_key_planetmint);
+    resp_msg.add(hexStrPubKey.c_str());
     sendOSCMessage(resp_msg);
 }
 
@@ -222,25 +227,23 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
-    auto t = fromhex(data);
-    std::vector<uint8_t> signInput(t, t + ((length-1)/2));
+    char* t = (char*)fromhex(data);
+    unsigned char hash[32] = {0};
+    memcpy( hash, t, 32);
 
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
-    struct sha256 sha;
-    sha256(&sha, signInput.data(), signInput.size());
-
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
-                                        sha.u.u8, 32, EC_FLAG_ECDSA,
+                                        hash, 32, EC_FLAG_ECDSA,
                                         bytes_out, EC_SIGNATURE_LEN);
 
     if(res == WALLY_OK)
-        res = wally_ec_sig_verify(sdk_pub_key_liquid, 33, sha.u.u8, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+        res = wally_ec_sig_verify(sdk_pub_key_liquid, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
 
     String hexStr;
-    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN/2);
+    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
 
     resp_msg.add(hexStr.c_str());
     resp_msg.add(String(res).c_str());
@@ -268,25 +271,24 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
         msg.getString(0, data, length);
     }
 
-    auto t = fromhex(data);
-    std::vector<uint8_t> signInput(t, t + ((length-1)/2));
 
+    char* t = (char*)fromhex(data);
+    unsigned char hash[32] = {0};
+    memcpy( hash, t, 32);
     auto seed = GenericGetSeed();
     getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
-    struct sha256 sha;
-    sha256(&sha, signInput.data(), signInput.size());
 
     uint8_t bytes_out[EC_SIGNATURE_LEN];
     int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
-                                        sha.u.u8, 32, EC_FLAG_ECDSA,
+                                        hash, 32, EC_FLAG_ECDSA,
                                         bytes_out, EC_SIGNATURE_LEN);
 
     if(res == WALLY_OK)
-        res = wally_ec_sig_verify(sdk_pub_key_planetmint, 33, sha.u.u8, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+        res = wally_ec_sig_verify(sdk_pub_key_planetmint, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
         
     String hexStr;
-    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN/2);
+    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
 
     resp_msg.add(hexStr.c_str());
     resp_msg.add(String(res).c_str());
