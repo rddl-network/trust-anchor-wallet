@@ -62,6 +62,7 @@ def send_osc_message(msg, cmd):
 	raw = encode_packet(msg)
 	slipMsg = sliplib.encode(raw)
 	ser.write(slipMsg)
+	sleep(5)	
 	return read_from_port(ser, cmd)
 
 

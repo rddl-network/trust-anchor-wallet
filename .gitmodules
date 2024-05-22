@@ -10,6 +10,7 @@
 [submodule "lib/se050"]
 	path = lib/se050
 	url = https://github.com/rddl-network/seal-edge-apdu.git
+	branch = main
 [submodule "lib/optiga"]
 	path = lib/optiga
-	url = git@github.com:Infineon/arduino-optiga-trust-x.git
+	url = git@github.com:rddl-network/arduino-optiga-trust-x.git
