@@ -252,7 +252,7 @@ class TestTWFunctions(unittest.TestCase):
 		# Assert that the response matches the expected response
 		self.assertEqual(response[0], expected_response)
 
-	def test_12_verify_signature_of_libwally_w_se050(self):
+	def test_12_verify_plmnt_signature_of_libwally_w_se050(self):
 		# Mock OSC message
 		msg = OSCMessage('/IHW/ecdsaSignPlmnt',',s',[self.__class__.testData])
 
@@ -275,7 +275,30 @@ class TestTWFunctions(unittest.TestCase):
 		# Assert that the response matches the expected response
 		self.assertEqual(response[0], expected_response)
 
-	# def test_12_set_seed_permanent(self):
+	def test_13_verify_liqud_signature_of_libwally_w_se050(self):
+		# Mock OSC message
+		msg = OSCMessage('/IHW/ecdsaSignRddl',',s',[self.__class__.testData])
+
+		# Mock response
+		expected_response = "0"
+		
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/ecdsaSignRddl")
+		plmntSignature = "3044" + "0220" + response[0][0:64] + "0220" + response[0][64:]
+
+		# Mock OSC message
+		msg = OSCMessage('/IHW/se050VerifySignature',',ssi',[self.__class__.testData, plmntSignature, self.__class__.liquidKeySlot])
+		
+		# Mock response
+		expected_response = bool(1)
+
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/se050VerifySignature")
+
+		# Assert that the response matches the expected response
+		self.assertEqual(response[0], expected_response)
+
+	# def test_14_set_seed_permanent(self):
 	# 	# Mock OSC message
 	# 	msg = OSCMessage('/IHW/se050SetSeed',',si',["ffd2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d", 0])
 
@@ -288,7 +311,7 @@ class TestTWFunctions(unittest.TestCase):
 	# 	# Assert that the response matches the expected response
 	# 	self.assertEqual(response[0], expected_response)
 
-	# def test_13_set_seed_permanent_override(self):
+	# def test_15_set_seed_permanent_override(self):
 	# 	# Mock OSC message
 	# 	msg = OSCMessage('/IHW/se050SetSeed',',si',[self.__class__.testSeed, 0])
 
@@ -301,7 +324,7 @@ class TestTWFunctions(unittest.TestCase):
 	# 	# Assert that the response matches the expected response
 	# 	self.assertNotEqual(response[0], expected_response)
 
-	# def test_14_get_seed_permanent(self):
+	# def test_16_get_seed_permanent(self):
 	# 	# Mock OSC message
 	# 	msg = OSCMessage('/IHW/se050GetSeed',',',[])
 
