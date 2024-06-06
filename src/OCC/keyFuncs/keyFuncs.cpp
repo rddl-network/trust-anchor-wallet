@@ -297,11 +297,13 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
 
 #ifdef DSE050
 /**
- * V
+ * Inject planetmint and liqud keys into se050. 
  * 
- * @param int(0)    Slot id of Key
+ * @param int(0) Slot id of plmnt Key. The liquid key's slot id will be one more than this value. 
+ * Ex: if given slot id is 120, planetmint key slot will be 120 and liquid slot will be 121
  * 
- * @return(0) Error message if any
+ * @return(0) 0 means success. 1 means fail on planetmint injection
+ *                             2 means fail on liquid injection
  */
 void routeSe050InjectSECPKeys(OSCMessage &msg, int addressOffset){
     int keyID{-1};
