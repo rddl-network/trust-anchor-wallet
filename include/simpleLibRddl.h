@@ -33,7 +33,9 @@ constexpr uint32_t rddl_path[] = {
 extern uint8_t sdk_priv_key_planetmint[32+1];
 extern uint8_t sdk_priv_key_liquid[32+1];
 extern uint8_t sdk_pub_key_planetmint[33+1];
+extern uint8_t sdk_pub_key_planetmint_ext[65+1];
 extern uint8_t sdk_pub_key_liquid[33+1];
+extern uint8_t sdk_pub_key_liquid_ext[65+1];
 extern uint8_t sdk_machineid_public_key[33+1]; 
 
 extern char sdk_address[128];

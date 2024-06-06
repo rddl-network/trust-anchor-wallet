@@ -40,11 +40,11 @@ String valiseGetSeed(){
 }
 
 
-int GenericSetSeed(const char* seed, int seedLen, int overrideFlag, char* errMsg){
+int GenericSetSeed(const char* seed, int seedLen, int deletable, char* errMsg){
     auto writtenLen{0};
 
 #ifdef DSE050
-    writtenLen = se050SetSeed(seed, seedLen, overrideFlag, errMsg);
+    writtenLen = se050SetSeed(seed, seedLen, deletable, errMsg);
 #else
     if(seedLen != (BIP39_SEED_LEN_512*2 + 1)){
         strcpy(errMsg, "ERROR! Seed size must be 64! Seed String size must be 128");
@@ -74,8 +74,8 @@ std::vector<uint8_t> GenericGetSeed(){
  * Store the base seed inside the trust anchor's memory
  *
  * @param string(0) String type data in Hex format
- * @param string(1) <optional> Override Flag. 0: Dont write, if there is any data on SE050
- *                                            1: Write anyway 
+ * @param string(1) <optional> Deletable Flag for SE050 only. 0: Permanent Seed  
+ *                                                            1: Transient Seed
  * 
  * @return(0) written data size as string
  * @return(1) Error message if any 
@@ -85,7 +85,7 @@ void routeSetSeed(OSCMessage &msg, int addressOffset)
     OSCMessage resp_msg("/setSeed");
     char seed[256];
     int seedLen{0}, writtenSize{0};
-    int overrideFlag = 0;
+    int deletable = 1;
     char errMsg[100] = {0};
  
     if (msg.isString(0))
@@ -95,10 +95,10 @@ void routeSetSeed(OSCMessage &msg, int addressOffset)
 
         if (msg.isInt(1))
         {
-           overrideFlag = msg.getInt(1);
+           deletable = msg.getInt(1);
         }
 
-        writtenSize = GenericSetSeed(seed, seedLen, overrideFlag, errMsg);
+        writtenSize = GenericSetSeed(seed, seedLen, deletable, errMsg);
     }
 
     resp_msg.add(String(writtenSize).c_str());
@@ -128,8 +128,8 @@ void routeGetSeed(OSCMessage &msg, int addressOffset)
 
 /**
  * Get the base seed from the trust anchor's memory
- * @param int(0) <optional> Override Flag. 0: Dont write, if there is any data on SE050
- *                                            1: Write anyway 
+ * @param int(0) <optional> Deletable Flag for SE050 only. 0: Permanent Seed
+ *                                                         1: Transient Seed
  * @param String(1) <optional> Mnemonic. If it is NULL, the function generate one
  * @param String(2) <optional> Passphrase. 
  * 
@@ -143,14 +143,14 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     uint8_t bytes_out[BIP39_SEED_LEN_512];
     char mnemonic[256];
     char passPhrase[64] = "";
-    int overrideFlag = 0;  
+    int deletable = 1;  
     char errMsg[100] = {0};
     OSCMessage resp_msg("/mnemonicToSeed");
 
 
     if (msg.isInt(0))
     {
-        overrideFlag = msg.getInt(0);
+        deletable = msg.getInt(0);
     }
 
     if (msg.isString(1))
@@ -172,7 +172,7 @@ void routeMnemonicToSeed(OSCMessage &msg, int addressOffset)
     String hexStr;
     hexStr = toHex(bytes_out, 64);
     valiseSetSeed(hexStr.c_str());
-    auto writtenSize = GenericSetSeed(hexStr.c_str(), hexStr.length()+1, overrideFlag, errMsg);
+    auto writtenSize = GenericSetSeed(hexStr.c_str(), hexStr.length()+1, deletable, errMsg);
     
     resp_msg.add(mnemonic);
     resp_msg.add(errMsg);
@@ -294,3 +294,45 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
     resp_msg.add(String(res).c_str());
     sendOSCMessage(resp_msg);
 } 
+
+#ifdef DSE050
+/**
+ * V
+ * 
+ * @param int(0)    Slot id of Key
+ * 
+ * @return(0) Error message if any
+ */
+void routeSe050InjectSECPKeys(OSCMessage &msg, int addressOffset){
+    int keyID{-1};
+    OSCMessage resp_msg("/se050InjectSECPKeys");
+
+    if (msg.isInt(0)){
+        keyID = msg.getInt(0);
+    }
+
+    auto seed = GenericGetSeed();
+    getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
+
+    std::vector <uint8_t>plmnt_pub_key (sdk_pub_key_planetmint_ext, sdk_pub_key_planetmint_ext + 65);
+    std::vector <uint8_t>plmnt_priv_key(sdk_priv_key_planetmint, sdk_priv_key_planetmint + 32);    
+
+    if(se050InjectSECPKeys(keyID, plmnt_priv_key, plmnt_pub_key) == -1){
+        resp_msg.add("1");
+        sendOSCMessage(resp_msg);
+        return;
+    }
+
+    std::vector <uint8_t>liquid_pub_key (sdk_pub_key_liquid_ext, sdk_pub_key_liquid_ext + 65);
+    std::vector <uint8_t>liquid_priv_key(sdk_priv_key_liquid, sdk_priv_key_liquid + 32);    
+
+    if(se050InjectSECPKeys(keyID + 1, liquid_priv_key, liquid_pub_key) == -1){
+        resp_msg.add("2");
+        sendOSCMessage(resp_msg);
+        return;
+    }
+
+    resp_msg.add("0");
+    sendOSCMessage(resp_msg);
+}
+#endif
