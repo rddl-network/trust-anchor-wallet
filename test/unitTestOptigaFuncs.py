@@ -1,5 +1,6 @@
 import threading
 import serial
+import serial.tools.list_ports
 from time import sleep 
 import time
 from osc4py3.oscbuildparse import *
@@ -8,9 +9,31 @@ import sliplib
 import unittest
 from unittest.mock import MagicMock
 
+def find_esp_port():
+    # List all available serial ports
+    ports = serial.tools.list_ports.comports()
+    
+    for port in ports:
+        # Print port details for debugging purposes
+        #print(f"Port: {port.device}, Description: {port.description}, HWID: {port.hwid}")
+        
+        # Check if the port description contains 'USB' or 'UART' which are common for ESP devices
+        if 'USB' in port.description or 'UART' in port.description:
+            return port.device
+    
+    return None
+
+esp_port = find_esp_port()
+
+if esp_port:
+	print(f"ESP device detected on port: {esp_port}")
+else:
+	print("Couldnt find ESP Device!")
+	exit()
+      
 ser = serial.Serial(
         # Serial Port to read the data from
-        port='/dev/ttyACM1',
+        port= esp_port,
 
         #Rate at which the information is shared to the communication channel
         baudrate = 115200,
