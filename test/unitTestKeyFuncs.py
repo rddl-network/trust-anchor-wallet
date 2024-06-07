@@ -1,5 +1,6 @@
 import threading
 import serial
+import serial.tools.list_ports
 from time import sleep 
 import time
 from osc4py3.oscbuildparse import *
@@ -9,9 +10,31 @@ import unittest
 from unittest.mock import MagicMock
 
 
+def find_esp_port():
+    # List all available serial ports
+    ports = serial.tools.list_ports.comports()
+    
+    for port in ports:
+        # Print port details for debugging purposes
+        #print(f"Port: {port.device}, Description: {port.description}, HWID: {port.hwid}")
+        
+        # Check if the port description contains 'USB' or 'UART' which are common for ESP devices
+        if 'USB' in port.description or 'UART' in port.description:
+            return port.device
+    
+    return None
+
+esp_port = find_esp_port()
+
+if esp_port:
+	print(f"ESP device detected on port: {esp_port}")
+else:
+	print("Couldnt find ESP Device!")
+	exit()
+
 ser = serial.Serial(
         # Serial Port to read the data from
-        port='/dev/ttyACM0',
+        port= esp_port,
 
         #Rate at which the information is shared to the communication channel
         baudrate = 115200,
@@ -63,16 +86,19 @@ def send_osc_message(msg, cmd):
 	raw = encode_packet(msg)
 	slipMsg = sliplib.encode(raw)
 	ser.write(slipMsg)
+	sleep(5)
 	return read_from_port(ser, cmd)
 
 
 class TestTWFunctions(unittest.TestCase):
+	testSeed  = "e7d2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d"
+
 	def test_01_set_seed(self):
 		# Mock OSC message
-		msg = OSCMessage('/IHW/setSeed',',si',["e7d2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d", 1])
+		msg = OSCMessage('/IHW/setSeed',',si',[self.__class__.testSeed, 1])
 
 		# Mock response
-		expected_response = "64"
+		expected_response = str(int(len(self.__class__.testSeed)/2))
 
 		# Call the function with the mocked OSC message
 		response = send_osc_message(msg, "/setSeed")
@@ -85,7 +111,7 @@ class TestTWFunctions(unittest.TestCase):
 		msg = OSCMessage('/IHW/getSeed',',',[])
 
 		# Mock response
-		expected_response = "e7d2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d"
+		expected_response = self.__class__.testSeed
 
 		# Call the function with the mocked OSC message
 		response = send_osc_message(msg, "/getSeed")
@@ -167,11 +193,11 @@ class TestTWFunctions(unittest.TestCase):
 		self.assertEqual(response[0], expected_response)
 
 
-	def test_07_sign_plmnt(self):
+	def test_08_sign_plmnt(self):
 		tMnemonic = "penalty police pool orphan snack faith educate syrup skill picnic prepare mystery dune control near nation report evolve ethics genius elite tool rigid crane"
 
 		# Mock OSC message
-		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[0, tMnemonic])
+		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[1, tMnemonic])
 
 		# Mock response
 		expected_response = tMnemonic
@@ -186,11 +212,11 @@ class TestTWFunctions(unittest.TestCase):
 		occ_message = send_osc_message(msg2, "/ecdsaSignPlmnt")
 		self.assertEqual( "b5af3756630c182dc238e553e23d287de7123b9c3dfd346924b58373eb92a236027dbb49d131b7afd4f9ab4575db4376b6c3ee4cb0c3b8a079d76fc28028f842", occ_message[0])
 
-	def test_08_sign_plmnt2(self):
+	def test_09_sign_plmnt2(self):
 		tMnemonic = "penalty police pool orphan snack faith educate syrup skill picnic prepare mystery dune control near nation report evolve ethics genius elite tool rigid crane"
 
 		# Mock OSC message
-		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[0, tMnemonic])
+		msg = OSCMessage('/IHW/mnemonicToSeed',',is',[1, tMnemonic])
 
 		# Mock response
 		expected_response = tMnemonic
@@ -204,8 +230,6 @@ class TestTWFunctions(unittest.TestCase):
 		msg2 = OSCMessage("/IHW/ecdsaSignPlmnt", ",s", [hash_digest])
 		occ_message = send_osc_message(msg2, "/ecdsaSignPlmnt")
 		self.assertEqual( "464c3ed2749a6a07beea0ef04ac638c1d51a9f11bca5f8ece75c79c8bcee94346e04a264528f3ecd1144be28dcb4f06c5d5c74c18cf1644b09830f5331551d51", occ_message[0])
-
-
 
 
 if __name__ == "__main__":

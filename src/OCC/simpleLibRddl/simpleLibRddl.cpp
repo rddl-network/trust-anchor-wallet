@@ -15,7 +15,9 @@ extern "C"{
 uint8_t sdk_priv_key_planetmint[32+1] = {0};
 uint8_t sdk_priv_key_liquid[32+1] = {0};
 uint8_t sdk_pub_key_planetmint[33+1] = {0};
+uint8_t sdk_pub_key_planetmint_ext[65+1] = {0};
 uint8_t sdk_pub_key_liquid[33+1] = {0};
+uint8_t sdk_pub_key_liquid_ext[65+1] = {0};
 uint8_t sdk_machineid_public_key[33+1]={0}; 
 
 char sdk_address[128] = {0};
@@ -212,5 +214,9 @@ bool getPlntmntKeys(const char* seed){
     bip32_key_free(node_root);
     bip32_key_free(node_planetmint);
     bip32_key_free(node_rddl);
+
+    wally_ec_public_key_decompress(sdk_pub_key_planetmint, EC_PUBLIC_KEY_LEN, sdk_pub_key_planetmint_ext, EC_PUBLIC_KEY_UNCOMPRESSED_LEN);
+    wally_ec_public_key_decompress(sdk_pub_key_liquid,     EC_PUBLIC_KEY_LEN, sdk_pub_key_liquid_ext,     EC_PUBLIC_KEY_UNCOMPRESSED_LEN);
+
     return true;
 }
