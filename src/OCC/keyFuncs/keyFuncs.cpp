@@ -65,6 +65,9 @@ std::vector<uint8_t> GenericGetSeed(){
 #else
     auto seedPtr = fromhex(valiseGetSeed().c_str());
     std::vector<uint8_t> seed( seedPtr, seedPtr + BIP39_SEED_LEN_512);
+    if(std::all_of(seed.begin(), seed.end(), [](int i) { return i==0; })){
+        seed.resize(0);
+    }
 #endif
     return seed;
 }
@@ -194,15 +197,22 @@ void routeGetPlntmntKeys(OSCMessage &msg, int addressOffset)
     OSCMessage resp_msg("/getPlntmntKeys");
 
     auto seed = GenericGetSeed();
-    getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
+    if(seed.size() != BIP39_SEED_LEN_512){
+        resp_msg.add("");
+        resp_msg.add("");
+        resp_msg.add("");
+        resp_msg.add("");
+    }else{
+        getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
-    String hexStrPubKey;
-    hexStrPubKey = toHex((const uint8_t *)sdk_pub_key_planetmint, 33);
+        String hexStrPubKey;
+        hexStrPubKey = toHex((const uint8_t *)sdk_pub_key_planetmint, 33);
 
-    resp_msg.add(sdk_address);
-    resp_msg.add(sdk_ext_pub_key_liquid);
-    resp_msg.add(sdk_ext_pub_key_planetmint);
-    resp_msg.add(hexStrPubKey.c_str());
+        resp_msg.add(sdk_address);
+        resp_msg.add(sdk_ext_pub_key_liquid);
+        resp_msg.add(sdk_ext_pub_key_planetmint);
+        resp_msg.add(hexStrPubKey.c_str());
+    }
     sendOSCMessage(resp_msg);
 }
 
@@ -232,21 +242,26 @@ void routeSignRddlData(OSCMessage &msg, int addressOffset)
     memcpy( hash, t, 32);
 
     auto seed = GenericGetSeed();
-    getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
+    if(seed.size() != BIP39_SEED_LEN_512){
+        resp_msg.add("");
+        resp_msg.add("");
+    }else{
+        getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
-    uint8_t bytes_out[EC_SIGNATURE_LEN];
-    int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
-                                        hash, 32, EC_FLAG_ECDSA,
-                                        bytes_out, EC_SIGNATURE_LEN);
+        uint8_t bytes_out[EC_SIGNATURE_LEN];
+        int res = wally_ec_sig_from_bytes( sdk_priv_key_liquid, 32,
+                                            hash, 32, EC_FLAG_ECDSA,
+                                            bytes_out, EC_SIGNATURE_LEN);
 
-    if(res == WALLY_OK)
-        res = wally_ec_sig_verify(sdk_pub_key_liquid, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+        if(res == WALLY_OK)
+            res = wally_ec_sig_verify(sdk_pub_key_liquid, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
 
-    String hexStr;
-    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
+        String hexStr;
+        hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
 
-    resp_msg.add(hexStr.c_str());
-    resp_msg.add(String(res).c_str());
+        resp_msg.add(hexStr.c_str());
+        resp_msg.add(String(res).c_str());
+    }
     sendOSCMessage(resp_msg);
 } 
 
@@ -276,22 +291,27 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
     unsigned char hash[32] = {0};
     memcpy( hash, t, 32);
     auto seed = GenericGetSeed();
-    getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
+    if(seed.size() != BIP39_SEED_LEN_512){
+        resp_msg.add("");
+        resp_msg.add("");
+    }else{
+        getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
 
 
-    uint8_t bytes_out[EC_SIGNATURE_LEN];
-    int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
-                                        hash, 32, EC_FLAG_ECDSA,
-                                        bytes_out, EC_SIGNATURE_LEN);
+        uint8_t bytes_out[EC_SIGNATURE_LEN];
+        int res = wally_ec_sig_from_bytes( sdk_priv_key_planetmint, 32,
+                                            hash, 32, EC_FLAG_ECDSA,
+                                            bytes_out, EC_SIGNATURE_LEN);
 
-    if(res == WALLY_OK)
-        res = wally_ec_sig_verify(sdk_pub_key_planetmint, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
-        
-    String hexStr;
-    hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
+        if(res == WALLY_OK)
+            res = wally_ec_sig_verify(sdk_pub_key_planetmint, 33, hash, 32, EC_FLAG_ECDSA, bytes_out, EC_SIGNATURE_LEN);
+            
+        String hexStr;
+        hexStr = toHex(bytes_out, EC_SIGNATURE_LEN);
 
-    resp_msg.add(hexStr.c_str());
-    resp_msg.add(String(res).c_str());
+        resp_msg.add(hexStr.c_str());
+        resp_msg.add(String(res).c_str());
+    }
     sendOSCMessage(resp_msg);
 } 
 
@@ -302,8 +322,9 @@ void routeSignPlmntData(OSCMessage &msg, int addressOffset)
  * @param int(0) Slot id of plmnt Key. The liquid key's slot id will be one more than this value. 
  * Ex: if given slot id is 120, planetmint key slot will be 120 and liquid slot will be 121
  * 
- * @return(0) 0 means success. 1 means fail on planetmint injection
- *                             2 means fail on liquid injection
+ * @return(0) 0 means success. 1 means there is no seed
+ *                             2 means fail on planetmint injection
+ *                             3 means fail on liquid injection
  */
 void routeSe050InjectSECPKeys(OSCMessage &msg, int addressOffset){
     int keyID{-1};
@@ -314,27 +335,31 @@ void routeSe050InjectSECPKeys(OSCMessage &msg, int addressOffset){
     }
 
     auto seed = GenericGetSeed();
-    getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
-
-    std::vector <uint8_t>plmnt_pub_key (sdk_pub_key_planetmint_ext, sdk_pub_key_planetmint_ext + 65);
-    std::vector <uint8_t>plmnt_priv_key(sdk_priv_key_planetmint, sdk_priv_key_planetmint + 32);    
-
-    if(se050InjectSECPKeys(keyID, plmnt_priv_key, plmnt_pub_key) == -1){
+    if(seed.size() != BIP39_SEED_LEN_512){
         resp_msg.add("1");
-        sendOSCMessage(resp_msg);
-        return;
+    }else{
+        getPlntmntKeys(reinterpret_cast<char*>(seed.data()));
+
+        std::vector <uint8_t>plmnt_pub_key (sdk_pub_key_planetmint_ext, sdk_pub_key_planetmint_ext + 65);
+        std::vector <uint8_t>plmnt_priv_key(sdk_priv_key_planetmint, sdk_priv_key_planetmint + 32);    
+
+        if(se050InjectSECPKeys(keyID, plmnt_priv_key, plmnt_pub_key) == -1){
+            resp_msg.add("2");
+            sendOSCMessage(resp_msg);
+            return;
+        }
+
+        std::vector <uint8_t>liquid_pub_key (sdk_pub_key_liquid_ext, sdk_pub_key_liquid_ext + 65);
+        std::vector <uint8_t>liquid_priv_key(sdk_priv_key_liquid, sdk_priv_key_liquid + 32);    
+
+        if(se050InjectSECPKeys(keyID + 1, liquid_priv_key, liquid_pub_key) == -1){
+            resp_msg.add("3");
+            sendOSCMessage(resp_msg);
+            return;
+        }
+
+        resp_msg.add("0");
     }
-
-    std::vector <uint8_t>liquid_pub_key (sdk_pub_key_liquid_ext, sdk_pub_key_liquid_ext + 65);
-    std::vector <uint8_t>liquid_priv_key(sdk_priv_key_liquid, sdk_priv_key_liquid + 32);    
-
-    if(se050InjectSECPKeys(keyID + 1, liquid_priv_key, liquid_pub_key) == -1){
-        resp_msg.add("2");
-        sendOSCMessage(resp_msg);
-        return;
-    }
-
-    resp_msg.add("0");
     sendOSCMessage(resp_msg);
 }
 #endif
