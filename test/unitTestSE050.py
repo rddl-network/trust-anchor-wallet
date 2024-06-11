@@ -298,6 +298,33 @@ class TestTWFunctions(unittest.TestCase):
 		# Assert that the response matches the expected response
 		self.assertEqual(response[0], expected_response)
 
+
+	def test_14_get_public_key_nistp(self):
+		# Mock OSC message
+		msg = OSCMessage('/IHW/se050GetPublicKey',',i',[self.__class__.nistpKeySlot])
+
+		# Mock response
+		expected_response = 130
+
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/se050GetPublicKey")
+
+		# Assert that the response matches the expected response
+		self.assertEqual(len(response[0]), expected_response)
+
+	def test_15_get_public_key_secp(self):
+		# Mock OSC message
+		msg = OSCMessage('/IHW/se050GetPublicKey',',i',[self.__class__.liquidKeySlot])
+
+		# Mock response
+		expected_response = 130
+
+		# Call the function with the mocked OSC message
+		response = send_osc_message(msg, "/se050GetPublicKey")
+
+		# Assert that the response matches the expected response
+		self.assertEqual(len(response[0]), expected_response)
+
 	# def test_14_set_seed_permanent(self):
 	# 	# Mock OSC message
 	# 	msg = OSCMessage('/IHW/se050SetSeed',',si',["ffd2d8a252100826db0ea6b2796428408a6671cedfbb11825bce809951593cf9eaa3d61a53e687e812261bf72fbaf54a173aa1c46c124fb50365f05dab40438d", 0])
