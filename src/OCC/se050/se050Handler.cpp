@@ -148,6 +148,38 @@ void routeSe050CreateKeyPair(OSCMessage &msg, int addressOffset)
 
 
 /**
+ * Getting public key from given slot
+ * 
+ * @param int(0)    Slot id of Key
+ * 
+ * @return(0) String type public key in Hex format
+ * @return(1) Error message if any 
+ */
+void routeSe050GetPublicKey(OSCMessage &msg, int addressOffset)
+{
+    OSCMessage resp_msg("/se050GetPublicKey");
+    
+    String hexStr;
+    char errMsg[100] = {0};
+    int keyID{NISTP_KEY_1_SLOT};
+ 
+    if (msg.isInt(0))
+    {
+        keyID = msg.getInt(0);
+
+        auto pubKey = se050_handler_o.get_public_key(keyID);
+        se050_handler_o.read_error_msg(errMsg);
+
+        hexStr = toHex(pubKey.data(), pubKey.size());
+    }
+
+    resp_msg.add(hexStr.c_str());
+    resp_msg.add(errMsg);
+    sendOSCMessage(resp_msg);
+}
+
+
+/**
  * Calculate hash of message 
  * 
  * @param string(0) Data to be hashed

@@ -7,6 +7,7 @@ constexpr std::pair<const char*, void(*)(OSCMessage&, int)> osc_func_table[] = {
     {"/IHW/se050SetSeed",               &routeSe050SetSeed},
     {"/IHW/se050GetSeed",               &routeSe050GetSeed},
     {"/IHW/se050CreateKeyPair",         &routeSe050CreateKeyPair},
+    {"/IHW/se050GetPublicKey",          &routeSe050GetPublicKey},
     {"/IHW/se050CalculateHash",         &routeSe050CalculateHash},
     {"/IHW/se050SignData",              &routeSe050SignData},
     {"/IHW/se050VerifySignature",       &routeSe050VerifySignature},
